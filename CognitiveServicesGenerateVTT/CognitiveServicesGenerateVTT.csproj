@@ -76,7 +76,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App_mine.config" />
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
