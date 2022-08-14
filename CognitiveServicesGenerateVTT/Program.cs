@@ -16,8 +16,8 @@ namespace CognitiveServicesGenerateVTT
 {
     class Program
     {
-        private static string SubscriptionKey = ConfigurationManager.AppSettings.Get("SubscriptionKey"); // "1d528f02344c4a0d97a5d686aa0036b8";
-        private static string Region = ConfigurationManager.AppSettings.Get("Region");// "francecentral";
+        private static string SubscriptionKey = ConfigurationManager.AppSettings.Get("SubscriptionKey");
+        private static string Region = ConfigurationManager.AppSettings.Get("Region");
 
         private static string InputFilePath;
         private static string VttOutputPath;
@@ -45,8 +45,9 @@ namespace CognitiveServicesGenerateVTT
                 CreateTranscriptFile(targetLang);
             }
 
-
-            using var audioConfig = AudioConfig.FromWavFileInput(InputFilePath);
+            using var audioConfig = GetWavAudioConfig();
+            //using var audioConfig = GetBytesAudioConfig();
+            
             using (var recognizer = new TranslationRecognizer(config, audioConfig))
             {
                 // Subscribes to events.
@@ -102,7 +103,7 @@ namespace CognitiveServicesGenerateVTT
                 };
 
                 // Starts continuous recognition. Uses StopContinuousRecognitionAsync() to stop recognition.
-                Console.WriteLine("Say something...");
+                //Console.WriteLine("Say something...");
 
                 await recognizer.StartContinuousRecognitionAsync();
 
@@ -114,6 +115,33 @@ namespace CognitiveServicesGenerateVTT
                 // Stops continuous recognition.
                 await recognizer.StopContinuousRecognitionAsync();
             }
+        }
+
+        private static AudioConfig GetWavAudioConfig()
+        {
+            return AudioConfig.FromWavFileInput(InputFilePath); //wav file
+        }
+
+        private static AudioConfig GetBytesAudioConfig()
+        {
+            //Custom wav file when sending the byte stream
+            AudioStreamFormat audioStreamFormat = AudioStreamFormat.GetWaveFormatPCM(48000, 16, 2);
+
+            //mp4 file
+            //AudioStreamFormat audioStreamFormat = AudioStreamFormat.GetCompressedFormat(AudioStreamContainerFormat.ANY);
+
+            var reader = new BinaryReader(File.OpenRead(InputFilePath));
+            using var audioInputStream = AudioInputStream.CreatePushStream(audioStreamFormat);
+            using var audioConfig = AudioConfig.FromStreamInput(audioInputStream);
+
+            byte[] readBytes;
+            do
+            {
+                readBytes = reader.ReadBytes(1024);
+                audioInputStream.Write(readBytes, readBytes.Length);
+            } while (readBytes.Length > 0);
+
+            return audioConfig;
         }
 
         static async Task Main(string[] args)
@@ -129,7 +157,7 @@ namespace CognitiveServicesGenerateVTT
             var temp2 = temp % 600000000;
             var second = Math.Floor(Convert.ToDecimal(temp2 / 10000000));
             var mil = temp2 % 10000000;
-            return $"{ hour.ToString("00")}:{ minute.ToString("00")}:{ second.ToString("00")}.{ (mil.ToString().Length > 3 ? mil.ToString().Substring(0, 3) : mil.ToString())}";
+            return $"{hour.ToString("00")}:{minute.ToString("00")}:{second.ToString("00")}.{(mil.ToString().Length > 3 ? mil.ToString().Substring(0, 3) : mil.ToString())}";
         }
 
         static void CreateTranscriptFile(string language)
