@@ -18,8 +18,9 @@ namespace CognitiveServicesGenerateVTT
     {
         private static string SubscriptionKey = ConfigurationManager.AppSettings.Get("SubscriptionKey");
         private static string Region = ConfigurationManager.AppSettings.Get("Region");
+        private static string InputFilePath = ConfigurationManager.AppSettings.Get("InputFilePath");
+        private static string UseGStreamerWithWav = ConfigurationManager.AppSettings.Get("UseGStreamerWithWav");
 
-        private static string InputFilePath;
         private static string VttOutputPath;
 
         public static async Task TranslationContinuousRecognitionAsync()
@@ -28,8 +29,15 @@ namespace CognitiveServicesGenerateVTT
             // Replace with your own subscription key and service region (e.g., "westus").
             var config = SpeechTranslationConfig.FromSubscription(SubscriptionKey, Region);
 
-            InputFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SourceVideo", "ignite.wav");
-            VttOutputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Transcript_{0}.vtt");
+            bool forceGStremaerWithWav = false;
+            bool isWavFile = Path.GetExtension(InputFilePath).Equals(".wav", StringComparison.InvariantCultureIgnoreCase);
+
+            if (isWavFile)
+            {
+                bool.TryParse(UseGStreamerWithWav, out forceGStremaerWithWav);
+            }
+
+            VttOutputPath = Path.Combine(Path.GetDirectoryName(InputFilePath), "Transcript_{0}.vtt");
 
             // Sets source and target languages.
             string fromLanguage = "en-US";
@@ -45,9 +53,17 @@ namespace CognitiveServicesGenerateVTT
                 CreateTranscriptFile(targetLang);
             }
 
-            using var audioConfig = GetWavAudioConfig();
-            //using var audioConfig = GetBytesAudioConfig();
-            
+            AudioConfig audioConfig;
+
+            if (isWavFile && forceGStremaerWithWav == false)
+            {
+                audioConfig = GetWavAudioConfig();
+            }
+            else
+            {
+                audioConfig = GetBytesAudioConfig();
+            }
+
             using (var recognizer = new TranslationRecognizer(config, audioConfig))
             {
                 // Subscribes to events.
@@ -124,11 +140,7 @@ namespace CognitiveServicesGenerateVTT
 
         private static AudioConfig GetBytesAudioConfig()
         {
-            //Custom wav file when sending the byte stream
-            AudioStreamFormat audioStreamFormat = AudioStreamFormat.GetWaveFormatPCM(48000, 16, 2);
-
-            //mp4 file
-            //AudioStreamFormat audioStreamFormat = AudioStreamFormat.GetCompressedFormat(AudioStreamContainerFormat.ANY);
+            AudioStreamFormat audioStreamFormat = AudioStreamFormat.GetCompressedFormat(AudioStreamContainerFormat.ANY);
 
             var reader = new BinaryReader(File.OpenRead(InputFilePath));
             using var audioInputStream = AudioInputStream.CreatePushStream(audioStreamFormat);

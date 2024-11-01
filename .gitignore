@@ -365,3 +365,4 @@ FodyWeavers.xsd
 
 # Dev configuration
 App_dev.config
+/Python/gstest_dev.py
